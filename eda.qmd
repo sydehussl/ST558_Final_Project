@@ -1,0 +1,13 @@
+---
+title: "ST 558 Final Project - EDA"
+author: Chris Grace
+format: 
+  html:
+    toc: true
+    theme: cosmo
+---
+
+```{r}
+read.csv("water_potability.csv")
+```
+
