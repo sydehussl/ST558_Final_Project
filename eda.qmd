@@ -7,7 +7,86 @@ format:
     theme: cosmo
 ---
 
+# Introduction
+
+We'll be investigating a dataset containing measurements for bodies of water with the ultimate goal of predicting the potability (safeness to drink) of the water.
+
+## Reading in the Data
+
+We use the `read.csv` function to bring in our data:
 ```{r}
-read.csv("water_potability.csv")
+water <- read.csv("water_potability.csv")
+
+head(water)
 ```
+
+Let's check how many rows and columns our data set has:
+```{r}
+dim(water)
+```
+There are `r nrow(water)` rows in the data set, each with `r ncol(water)` columns. The preview of the table shows some missing values, so we'll use `colsums()` to examine this missingness:
+
+```{r}
+colSums(is.na(water))
+```
+There are a considerable number of missing values for `sulfate`, `ph`, and `trihalomethanes`. We could drop these predictors or remove the rows with missing observations.
+
+Next, we'll go over each of the variables in the data set.
+
+## Variables in the Dataset
+
+The dataset has the following variables:
+
+- `ph` : The pH of water (0 to 14)
+- `Hardness`: The hardness of the water (mg/L)
+- `Solids`: Total dissolved solids (ppm)
+- `Chloramines`: Amount of chloramines (ppm)
+- `Sulfate`: Amount of sulfate (ppm)
+- `Conductivity`: Electrical conductivity ($\mu$S/cm)
+- `Organic_carbon`: Amount of organic carbon (ppm)
+- `Trihalomethanes`: Amount of trihalomethanes ($\mu$g/L)
+- `Turbidity`: Haziness (NTU)
+- `Potability`: Indicator for safety of human consumption (1 = safe, 0 = not safe)
+
+Our ultimate goal is to **predict potability** given the values of the other variables. In the remainder of the exploratory data analysis, our goal is to explore the relationships in the data and determine which predictor variables we should use for our models.
+
+# Numeric Summaries
+
+Our first step is to compare the average value of each predictor when water is potable/non-potable. This should make any strong relationships abundantly clear and give us a good starting point.
+
+I'll clean up the column names a bit before we compute the summary measures.
+```{r}
+suppressPackageStartupMessages(library(tidyr))
+
+# make names lowercase
+names(water) <- tolower(names(water))
+
+water <-
+  water |>
+  rename("potable" = "potability",
+         "trihalo" = "trihalomethanes")
+
+num_sum <-
+  water |>
+  drop_na() |>
+  group_by(potable) |>
+  summarize(across(where(is.numeric), .fns = list(mean = mean,
+                                                  sd = sd))) |>
+  pivot_longer(cols = !potable) # need to fix dis
+
+num_sum
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
