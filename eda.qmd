@@ -56,37 +56,118 @@ Our first step is to compare the average value of each predictor when water is p
 
 I'll clean up the column names a bit before we compute the summary measures.
 ```{r}
-suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(tidyverse))
 
 # make names lowercase
 names(water) <- tolower(names(water))
 
+# rename vars i can't spell
 water <-
   water |>
   rename("potable" = "potability",
-         "trihalo" = "trihalomethanes")
+         "trihalo" = "trihalomethanes") |>
+  mutate(potable = factor(potable,
+                          labels = c("non_potable", "potable")))
+  
 
+# compute summary table
 num_sum <-
   water |>
   drop_na() |>
   group_by(potable) |>
-  summarize(across(where(is.numeric), .fns = list(mean = mean,
-                                                  sd = sd))) |>
-  pivot_longer(cols = !potable) # need to fix dis
+  summarize(across(where(is.numeric), mean)) |>
+  pivot_longer(cols = !potable) |>
+  pivot_wider(names_from = potable,
+              values_from = value)
+
+# create difference column
+num_sum <-
+  num_sum |>
+  mutate(pct_difference = abs(potable - non_potable)/((potable+non_potable) / 2)) |>
+  arrange(desc(pct_difference))
 
 num_sum
 
 ```
 
+The summary table ranks the variables based on how different their average value is for potable and non-potable water. We use percent difference because the variables have different units and scales.
 
+The following predictors have the largest average difference in potable/non-potable settings:
 
+- Solids
+- Chloramines
+- Turbidity
+- Organic Carbon
+- pH
+- Conductivity
 
+# Visual Summaries
+Given the number of predictors we have, it's probably best to investigate relationships through visual summaries. This will give us a better idea of the shape and spread of our data.
 
+As a first step, we can produce pairwise plots using the `ggpairs()` function in the `ggally` package. We'll start with just examining the predictors we identified above:
+```{r}
+library(GGally)
 
+# extract top predictors from numeric summary table
+top_preds <- num_sum$name[1:5]
 
+# drop na and only include top preds
+water_top_preds <-
+  water |>
+  drop_na() |>
+  select(potable, all_of(top_preds))
 
+ggpairs(water_top_preds,
+        mapping = aes(color = potable))
+```
 
+This matrix shows the relationships between each variable. The leftmost column shows histograms for each variable contingent on the potability of the water (non-potable = red, potable = blue). We'd like predictors with substantially different distributions for potable and non-potable water because they'd have better explanatory power for predicting potability.
 
+Unfortunately, the histograms between potability and the other predictors share similar shapes. The top row box plots show a similar story, with the potable/non-potable box plots looking similar for all predictors.
 
+Next, we examine interactions (the lower triangle off-diagonals). These scatter plots show us the separation of potable/non-potable water sources based on two predictors instead of one. Ideally we'd see two totally seperate groups of red/blue points, but there's some mingling going on.
+
+The interactions with the greatest predictive power seem to be:
+
+- `Solids` x `pH`
+- `Solids` x `Chloramines`
+- `Chloramines` x `Turbidity`
+
+Again, `solids` seems to be a useful predictor of potability. We'll produce another pairwise plot to investigate the remaining predictors. I'm going to add `solids` and `chloramines` to the next one in case there are any relevant interactions:
+```{r}
+water_rest_preds <-
+  water |>
+  drop_na() |>
+  select(potable, solids, chloramines, !any_of(top_preds))
+
+ggpairs(water_rest_preds,
+        mapping = aes(color = potable))
+```
+
+Checking out our cramped second matrix, we don't see any obvious stand-outs. It seems like the interactions with `solids` tend to do a decent job separating the potable from non-potable samples.
+
+::: {.callout-note}
+Note that the "separation" we see doesn't have to be a straight line through the predictor space, as both of the models we intend to fit are non-linear.
+:::
+
+I see the best separation in the following interactions:
+
+- `solids` x `hardness`
+- `solids` x `conductivity`
+- `chloramines` x `conductivity`
+
+# Recap of Useful Predictors
+
+After examining the data, it seems like the following predictors will be most helpful for predicting potability:
+
+- `solids`
+- `chloramines`
+- `conductivity`
+
+Additionally, we saw some utility in the following set:
+
+- `hardness`
+- `ph`
+- `turbidity`
 
 
