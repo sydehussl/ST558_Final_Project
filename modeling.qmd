@@ -1,0 +1,83 @@
+---
+title: "ST 558 Final Project - Modeling"
+author: Chris Grace
+format: 
+  html:
+    toc: true
+    theme: cosmo
+---
+
+# Introduction
+
+On the heels of the EDA we performed, we're ready to begin modeling!
+
+Recall that our goal is to predict the potability (safeness to drink) of water based on some measurements about it. In the EDA, we found that the following predictors are most useful:
+
+- `solids`
+- `chloramines`
+- `conductivity`
+- `hardness`
+- `ph`
+- `turbidity`
+
+## Preparing our Data
+
+Before modeling, we'll prepare our data the same way as in the EDA file.
+
+Additionally, we pare down to just the useful predictors.
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+
+water_raw <- read.csv("water_potability.csv")
+
+names(water_raw) <- tolower(names(water_raw))
+
+# preds we identified in EDA step
+useful_preds <- c("solids",
+                  "chloramines",
+                  "conductivity",
+                  "hardness",
+                  "ph",
+                  "turbidity")
+
+# prep dataset
+water <-
+  water_raw |>
+  rename("potable" = "potability",
+         "trihalo" = "trihalomethanes") |>
+  mutate(potable = factor(potable,
+                          labels = c("non_potable", "potable"))) |>
+  select(potable, all_of(useful_preds))
+
+# preview
+head(water)
+```
+Looking good! This smaller data set will speed up computations.
+
+We need to be careful though, we included `ph` even though it had some missing observations. 
+```{r}
+colSums(is.na(water))
+```
+
+There are `r sum(is.na(water$ph))` observations with missing `ph` readings. We didn't cover imputation, so it's most prudent to simply remove these observations from the data set:
+```{r}
+water <-
+  water |>
+  drop_na()
+
+# no more missing ph values
+sum(is.na(water$ph))
+```
+
+Now that the data is ready, we can partition our data into a train/test split
+
+## Train/Test Split
+```{r}
+
+```
+
+
+
+
+
+
