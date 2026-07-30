@@ -30,7 +30,7 @@ Before modeling, we'll prepare our data the same way as in the EDA file.
 
 Additionally, we pare down to just the useful predictors.
 ```{r}
-suppressPackageStartupMessages(library(tidyverse))
+suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
 
 water_raw <- read.csv("water_potability.csv")
 
@@ -82,7 +82,7 @@ We're told to use a **70/30 train/test split**, so we reserve 70% of the data fo
 Also, we split up the training partition into **5 folds** as instructed.
 
 ```{r}
-suppressPackageStartupMessages(library(tidymodels))
+suppressWarnings(suppressPackageStartupMessages(library(tidymodels)))
 
 set.seed(558)
 
@@ -106,7 +106,7 @@ This is a brief recipe for a few reasons:
 - We don't need to normalize our numeric variables for tree-based methods
 - We don't need to apply any transformations
 
-Hence, we just specify that our response (potability) is a function of all the predictors in the data set.
+Hence, we just specify that our response (potability) is a function of all the predictors in the data set:
 ```{r}
 tree_rec <-
   recipe(potable ~ ., data = water_train)
@@ -114,19 +114,94 @@ tree_rec <-
 
 At this point, it's time to work on each model separately!
 
+# Classification Tree Model
+## Introduction
 
+A classification tree is a type of tree-based model that attempts to predict the class/group of an observation based on other inputs.
 
+Tree-based models work by splitting the predictor space into regions. The predictor values at which the splits occur are determined by a loss function during the training process. Splits are binary (they form two groups) and recursive (keep happening until stop condition is met). 
 
+In classification, splits are chosen to produce the "purest" possible child nodes. If an observation falls into a region, the model classifies it based on the most common class in that bin.
 
+### A visual Representation of Tree-based Models
 
+On the left hand side of image below, the predictor space is divided into three regions based on the values of `Age` and `Blood Pressure`. The right side of the image shows this representation in tree form.
 
+Consider a person with a blood pressure less than 152. Starting at first node (the box labeled '1'), this person's blood pressure classifies them in the (2) region, corresponding to the larger region on the left side of the predictor space.
 
+![Classification Tree Example from Choi, Doowon, et. al (2020)](class_tree_example.png)
 
+## Defining Model + Workflow:
 
+We specify the following details when creating our model:
 
+- Decision tree with a maximum depth of 30, minimum terminal node size of 10, tuneable cost complexity penalty
+- Use the `rpart` engine to build a *classification* tree
 
+Regarding our workflow, we simply specify our recipe and the model we just made.
+```{r}
+# define model
+tree_model <-
+  decision_tree(tree_depth = 30,
+                min_n = 10,
+                cost_complexity = tune()) |>
+  set_engine("rpart") |>
+  set_mode("classification")
 
+# define workflow
+tree_wkf <-
+  workflow() |>
+  add_recipe(tree_rec) |>
+  add_model(tree_model)
 
+```
+
+## Fitting the Model
+
+Next, we fit the model to the training folds to optimize the cost-complexity penalty. We will test 25 options to optimize the model performance.
+
+As instructed, we use **log loss** as the loss metric.
+
+```{r}
+# fit model to CV folds w/ 15 levels for Cp
+tree_fits <-
+  tree_wkf |>
+  tune_grid(resamples = water_folds,
+            grid = grid_regular(cost_complexity(),
+                               levels = 25),
+            metrics = metric_set(mn_log_loss))
+
+# collect metrics + arrange by loss
+tree_fits |>
+  collect_metrics() |>
+  arrange(mean) |>
+  select(cost_complexity, mean)
+```
+
+We can see that there's a tie for the best cost complexity parameter. We'll choose the larger penalty, as this will reduce the likelihood our tree over-fits the training data. We can do this using the `select_best()` function:
+```{r}
+tree_tuned_cp <-
+  tree_fits |>
+  select_best(metric = "mn_log_loss")
+
+tree_tuned_cp
+```
+
+## Finalize Model + Fit Entire Training Set
+
+With our tuning parameter optimized, let's build the final workflow!
+```{r}
+# finalize workflow
+tree_final_wkf <-
+  tree_wkf |>
+  finalize_workflow(tree_tuned_cp)
+```
+
+We'll save the test accuracy for the model showdown.
+
+Next, we build the random forest model!
+
+# Random Forest Model
 
 
 
