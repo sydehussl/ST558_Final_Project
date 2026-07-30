@@ -19,5 +19,33 @@
     "title": "ST 558 Final Project - EDA",
     "section": "",
     "text": "The dataset has the following variables:\n\nph : The pH of water (0 to 14)\nHardness: The hardness of the water (mg/L)\nSolids: Total dissolved solids (ppm)\nChloramines: Amount of chloramines (ppm)\nSulfate: Amount of sulfate (ppm)\nConductivity: Electrical conductivity (\\(\\mu\\)S/cm)\nOrganic_carbon: Amount of organic carbon (ppm)\nTrihalomethanes: Amount of trihalomethanes (\\(\\mu\\)g/L)\nTurbidity: Haziness (NTU)\nPotability: Indicator for safety of human consumption (1 = safe, 0 = not safe)\n\nOur ultimate goal is to predict potability given the values of the other variables. In the remainder of the exploratory data analysis, our goal is to explore the relationships in the data and determine which predictor variables we should use for our models."
+  },
+  {
+    "objectID": "modeling.html",
+    "href": "modeling.html",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "",
+    "text": "Click here for the EDA Site!"
+  },
+  {
+    "objectID": "modeling.html#preparing-our-data",
+    "href": "modeling.html#preparing-our-data",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Preparing our Data",
+    "text": "Preparing our Data\nBefore modeling, we’ll prepare our data the same way as in the EDA file.\nAdditionally, we pare down to just the useful predictors.\n\nsuppressPackageStartupMessages(library(tidyverse))\n\nWarning: package 'ggplot2' was built under R version 4.5.3\n\n\nWarning: package 'tidyr' was built under R version 4.5.3\n\n\nWarning: package 'readr' was built under R version 4.5.3\n\n\nWarning: package 'purrr' was built under R version 4.5.3\n\n\nWarning: package 'dplyr' was built under R version 4.5.3\n\nwater_raw &lt;- read.csv(\"water_potability.csv\")\n\nnames(water_raw) &lt;- tolower(names(water_raw))\n\n# preds we identified in EDA step\nuseful_preds &lt;- c(\"solids\",\n                  \"chloramines\",\n                  \"conductivity\",\n                  \"hardness\",\n                  \"ph\",\n                  \"turbidity\")\n\n# prep dataset\nwater &lt;-\n  water_raw |&gt;\n  rename(\"potable\" = \"potability\",\n         \"trihalo\" = \"trihalomethanes\") |&gt;\n  mutate(potable = factor(potable,\n                          labels = c(\"non_potable\", \"potable\"))) |&gt;\n  select(potable, all_of(useful_preds))\n\n# preview\nhead(water)\n\n      potable   solids chloramines conductivity hardness       ph turbidity\n1 non_potable 20791.32    7.300212     564.3087 204.8905       NA  2.963135\n2 non_potable 18630.06    6.635246     592.8854 129.4229 3.716080  4.500656\n3 non_potable 19909.54    9.275884     418.6062 224.2363 8.099124  3.055934\n4 non_potable 22018.42    8.059332     363.2665 214.3734 8.316766  4.628771\n5 non_potable 17978.99    6.546600     398.4108 181.1015 9.092223  4.075075\n6 non_potable 28748.69    7.544869     280.4679 188.3133 5.584087  2.559708\n\n\nLooking good! This smaller data set will speed up computations.\nWe need to be careful though, we included ph even though it had some missing observations.\n\ncolSums(is.na(water))\n\n     potable       solids  chloramines conductivity     hardness           ph \n           0            0            0            0            0          491 \n   turbidity \n           0 \n\n\nThere are 491 observations with missing ph readings. We didn’t cover imputation, so it’s most prudent to simply remove these observations from the data set:\n\nwater &lt;-\n  water |&gt;\n  drop_na()\n\n# no more missing ph values\nsum(is.na(water$ph))\n\n[1] 0\n\n\nNow that the data is ready, we can partition our data into a train/test split!"
+  },
+  {
+    "objectID": "modeling.html#traintest-split-cv-folds",
+    "href": "modeling.html#traintest-split-cv-folds",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Train/Test Split + CV Folds",
+    "text": "Train/Test Split + CV Folds\nWe’re told to use a 70/30 train/test split, so we reserve 70% of the data for model training. I’m including potable as the strata so that there’s a proportional amount of potable/non-potable water in both partitions.\nAlso, we split up the training partition into 5 folds as instructed.\n\nsuppressPackageStartupMessages(library(tidymodels))\n\nWarning: package 'tidymodels' was built under R version 4.5.3\n\n\nWarning: package 'broom' was built under R version 4.5.3\n\n\nWarning: package 'dials' was built under R version 4.5.3\n\n\nWarning: package 'scales' was built under R version 4.5.3\n\n\nWarning: package 'infer' was built under R version 4.5.3\n\n\nWarning: package 'modeldata' was built under R version 4.5.3\n\n\nWarning: package 'parsnip' was built under R version 4.5.3\n\n\nWarning: package 'recipes' was built under R version 4.5.3\n\n\nWarning: package 'rsample' was built under R version 4.5.3\n\n\nWarning: package 'tailor' was built under R version 4.5.3\n\n\nWarning: package 'tune' was built under R version 4.5.3\n\n\nWarning: package 'workflows' was built under R version 4.5.3\n\n\nWarning: package 'workflowsets' was built under R version 4.5.3\n\n\nWarning: package 'yardstick' was built under R version 4.5.3\n\nset.seed(558)\n\n# 70/30 train/test split\nwater_split &lt;- initial_split(water, prop = 0.70, strata = potable)\n\nwater_train &lt;- training(water_split)\nwater_test  &lt;- testing(water_split)\n\n# 5 fold cross validation\nwater_folds &lt;- vfold_cv(water_train, 5)"
+  },
+  {
+    "objectID": "modeling.html#creating-a-recipe",
+    "href": "modeling.html#creating-a-recipe",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Creating a Recipe",
+    "text": "Creating a Recipe\nNext, we’ll make a very simple recipe to add to our workflows.\nThis is a brief recipe for a few reasons:\n\nWe don’t have any dummy variables\nWe don’t need to normalize our numeric variables for tree-based methods\nWe don’t need to apply any transformations\n\nHence, we just specify that our response (potability) is a function of all the predictors in the data set.\n\ntree_rec &lt;-\n  recipe(potable ~ ., data = water_train)\n\nAt this point, it’s time to work on each model separately!"
   }
 ]

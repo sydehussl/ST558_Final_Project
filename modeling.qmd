@@ -1,11 +1,15 @@
 ---
 title: "ST 558 Final Project - Modeling"
 author: Chris Grace
+execute:
+  warn: false
 format: 
   html:
     toc: true
     theme: cosmo
 ---
+
+[Click here for the EDA Site!](eda.html)
 
 # Introduction
 
@@ -69,12 +73,70 @@ water <-
 sum(is.na(water$ph))
 ```
 
-Now that the data is ready, we can partition our data into a train/test split
+Now that the data is ready, we can partition our data into a train/test split!
 
-## Train/Test Split
+## Train/Test Split + CV Folds
+
+We're told to use a **70/30 train/test split**, so we reserve 70% of the data for model training. I'm including `potable` as the strata so that there's a proportional amount of potable/non-potable water in both partitions.
+
+Also, we split up the training partition into **5 folds** as instructed.
+
 ```{r}
+suppressPackageStartupMessages(library(tidymodels))
 
+set.seed(558)
+
+# 70/30 train/test split
+water_split <- initial_split(water, prop = 0.70, strata = potable)
+
+water_train <- training(water_split)
+water_test  <- testing(water_split)
+
+# 5 fold cross validation
+water_folds <- vfold_cv(water_train, 5)
 ```
+
+## Creating a Recipe
+
+Next, we'll make a very simple recipe to add to our workflows.
+
+This is a brief recipe for a few reasons:
+
+- We don't have any dummy variables
+- We don't need to normalize our numeric variables for tree-based methods
+- We don't need to apply any transformations
+
+Hence, we just specify that our response (potability) is a function of all the predictors in the data set.
+```{r}
+tree_rec <-
+  recipe(potable ~ ., data = water_train)
+```
+
+At this point, it's time to work on each model separately!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

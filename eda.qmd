@@ -172,4 +172,4 @@ Additionally, we saw some utility in the following set:
 
 With our exploratory analysis complete, we can start the modeling process!
 
-[Click here for the Modeling Site](Modeling.html)
+[Click here for the Modeling Site](modeling.html)
