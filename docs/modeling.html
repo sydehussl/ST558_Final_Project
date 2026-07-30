@@ -134,10 +134,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#a-visual-representation-of-tree-based-models" id="toc-a-visual-representation-of-tree-based-models" class="nav-link" data-scroll-target="#a-visual-representation-of-tree-based-models">A visual Representation of Tree-based Models</a></li>
   </ul></li>
   <li><a href="#defining-model-workflow" id="toc-defining-model-workflow" class="nav-link" data-scroll-target="#defining-model-workflow">Defining Model + Workflow:</a></li>
-  <li><a href="#fitting-the-model" id="toc-fitting-the-model" class="nav-link" data-scroll-target="#fitting-the-model">Fitting the Model</a></li>
-  <li><a href="#finalize-model-fit-entire-training-set" id="toc-finalize-model-fit-entire-training-set" class="nav-link" data-scroll-target="#finalize-model-fit-entire-training-set">Finalize Model + Fit Entire Training Set</a></li>
+  <li><a href="#fitting-the-model-tuning-cost-complexity" id="toc-fitting-the-model-tuning-cost-complexity" class="nav-link" data-scroll-target="#fitting-the-model-tuning-cost-complexity">Fitting the Model + Tuning Cost Complexity</a></li>
+  <li><a href="#finalize-classification-tree-model" id="toc-finalize-classification-tree-model" class="nav-link" data-scroll-target="#finalize-classification-tree-model">Finalize Classification Tree Model</a></li>
   </ul></li>
-  <li><a href="#random-forest-model" id="toc-random-forest-model" class="nav-link" data-scroll-target="#random-forest-model">Random Forest Model</a></li>
+  <li><a href="#random-forest-model" id="toc-random-forest-model" class="nav-link" data-scroll-target="#random-forest-model">Random Forest Model</a>
+  <ul class="collapse">
+  <li><a href="#introduction-2" id="toc-introduction-2" class="nav-link" data-scroll-target="#introduction-2">Introduction</a></li>
+  <li><a href="#defining-model-workflow-1" id="toc-defining-model-workflow-1" class="nav-link" data-scroll-target="#defining-model-workflow-1">Defining Model + Workflow</a></li>
+  <li><a href="#fitting-the-model-tuning-of-predictors-per-split" id="toc-fitting-the-model-tuning-of-predictors-per-split" class="nav-link" data-scroll-target="#fitting-the-model-tuning-of-predictors-per-split">Fitting the Model + Tuning # of Predictors per Split</a></li>
+  <li><a href="#finalize-model" id="toc-finalize-model" class="nav-link" data-scroll-target="#finalize-model">Finalize Model</a></li>
+  </ul></li>
+  <li><a href="#model-showdown" id="toc-model-showdown" class="nav-link" data-scroll-target="#model-showdown">Model Showdown</a></li>
   </ul>
 </nav>
     </div>
@@ -294,6 +301,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h3 class="anchored" data-anchor-id="a-visual-representation-of-tree-based-models">A visual Representation of Tree-based Models</h3>
 <p>On the left hand side of image below, the predictor space is divided into three regions based on the values of <code>Age</code> and <code>Blood Pressure</code>. The right side of the image shows this representation in tree form.</p>
 <p>Consider a person with a blood pressure less than 152. Starting at first node (the box labeled ‘1’), this person’s blood pressure classifies them in the (2) region, corresponding to the larger region on the left side of the predictor space.</p>
+<p>When trees don’t have perfectly pure nodes, the most prevalent class in the region is the prediction. For regression tasks, the average of the observations in the region is predicted instead.</p>
 <div class="quarto-figure quarto-figure-center">
 <figure class="figure">
 <p><img src="class_tree_example.png" class="img-fluid figure-img"></p>
@@ -306,8 +314,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="defining-model-workflow">Defining Model + Workflow:</h2>
 <p>We specify the following details when creating our model:</p>
 <ul>
-<li>Decision tree with a maximum depth of 30, minimum terminal node size of 10, tuneable cost complexity penalty</li>
-<li>Use the <code>rpart</code> engine to build a <em>classification</em> tree</li>
+<li>Build a decision tree with:
+<ul>
+<li>Maximum depth of 30</li>
+<li>Minimum terminal node size of 10</li>
+<li>Tuneable cost complexity penalty</li>
+</ul></li>
+<li>Use the <code>rpart</code> engine to build a <strong>classification</strong> tree</li>
 </ul>
 <p>Regarding our workflow, we simply specify our recipe and the model we just made.</p>
 <div class="cell">
@@ -326,9 +339,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(tree_model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
-<section id="fitting-the-model" class="level2">
-<h2 class="anchored" data-anchor-id="fitting-the-model">Fitting the Model</h2>
-<p>Next, we fit the model to the training folds to optimize the cost-complexity penalty. We will test 25 options to optimize the model performance.</p>
+<section id="fitting-the-model-tuning-cost-complexity" class="level2">
+<h2 class="anchored" data-anchor-id="fitting-the-model-tuning-cost-complexity">Fitting the Model + Tuning Cost Complexity</h2>
+<p>Next, we fit the model to the training folds to optimize the cost-complexity penalty. We will test 25 values to optimize the model performance.</p>
 <p>As instructed, we use <strong>log loss</strong> as the loss metric.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># fit model to CV folds w/ 15 levels for Cp</span></span>
@@ -376,8 +389,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 </section>
-<section id="finalize-model-fit-entire-training-set" class="level2">
-<h2 class="anchored" data-anchor-id="finalize-model-fit-entire-training-set">Finalize Model + Fit Entire Training Set</h2>
+<section id="finalize-classification-tree-model" class="level2">
+<h2 class="anchored" data-anchor-id="finalize-classification-tree-model">Finalize Classification Tree Model</h2>
 <p>With our tuning parameter optimized, let’s build the final workflow!</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># finalize workflow</span></span>
@@ -391,6 +404,125 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="random-forest-model" class="level1">
 <h1>Random Forest Model</h1>
+<section id="introduction-2" class="level2">
+<h2 class="anchored" data-anchor-id="introduction-2">Introduction</h2>
+<p>A random forest model is a type of <strong>ensemble method</strong> where many trees are generated and predictions are pooled across the entire ensemble (rather than from a single tree).</p>
+<p>Each tree in a random forest is grown with <strong>bootstrapped</strong> data (samples with replacement from the original data). At each <em>node</em> (branch), a random subset of predictors is considered, rather than the full set.</p>
+<p>Random forest models are less prone to over fitting, as the randomization decreases the correlation of trees in the ensemble. This can also increase their predictive power</p>
+<p>Compared to regular classification trees, random forest models tend to perform better on new data at the expense of their higher computational demand (especially during training).</p>
+</section>
+<section id="defining-model-workflow-1" class="level2">
+<h2 class="anchored" data-anchor-id="defining-model-workflow-1">Defining Model + Workflow</h2>
+<p>For the random forest model, we specify the following:</p>
+<ul>
+<li>Use the <code>ranger</code> engine to build the forest</li>
+<li>The tree is for <strong>classification</strong>, not regression</li>
+<li>Tune <code>mtry</code>, the number of predictors considered at each split</li>
+</ul>
+<p>Again, our workflow is simply our general recipe plus the model specification:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># define model</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>rf_model <span class="ot">&lt;-</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rand_forest</span>(<span class="at">mtry =</span> <span class="fu">tune</span>()) <span class="sc">|&gt;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_engine</span>(<span class="st">"ranger"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set_mode</span>(<span class="st">"classification"</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="co"># define workflow</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>rf_wkf <span class="ot">&lt;-</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">workflow</span>() <span class="sc">|&gt;</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_recipe</span>(tree_rec) <span class="sc">|&gt;</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">add_model</span>(rf_model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="fitting-the-model-tuning-of-predictors-per-split" class="level2">
+<h2 class="anchored" data-anchor-id="fitting-the-model-tuning-of-predictors-per-split">Fitting the Model + Tuning # of Predictors per Split</h2>
+<p>Next, we fit the model to the training folds to optimize the <code>mtry</code> parameter. This parameter defines the number of predictors considered at each split. It’s maximum possible value is the number of predictors in our model (6), and minimum is one. We’ll consider every possible value.</p>
+<p>Again, we use <strong>log loss</strong> as the loss metric.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># fit rf model to CV folds w/ all levels for mtry</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>rf_fits <span class="ot">&lt;-</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  rf_wkf <span class="sc">|&gt;</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tune_grid</span>(<span class="at">resamples =</span> water_folds,</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>            <span class="at">grid =</span> <span class="dv">6</span>,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>            <span class="at">metrics =</span> <span class="fu">metric_set</span>(mn_log_loss))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>i Creating pre-processing data to finalize 1 unknown parameter: "mtry"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># collect metrics + arrange by loss</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>rf_fits <span class="sc">|&gt;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect_metrics</span>() <span class="sc">|&gt;</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(mean) <span class="sc">|&gt;</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(mtry, mean)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 2
+   mtry  mean
+  &lt;int&gt; &lt;dbl&gt;
+1     2 0.659
+2     1 0.661
+3     3 0.662
+4     4 0.663
+5     5 0.663
+6     6 0.666</code></pre>
+</div>
+</div>
+<p>Checking out our parameter table, we see that our loss metric is minimized when there are 2 predictors considered at each split.</p>
+<p>We’ll save this value and then build the final model!</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>rf_tuned_mtry <span class="ot">&lt;-</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  rf_fits <span class="sc">|&gt;</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select_best</span>(<span class="at">metric =</span> <span class="st">"mn_log_loss"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="finalize-model" class="level2">
+<h2 class="anchored" data-anchor-id="finalize-model">Finalize Model</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># finalize workflow</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>rf_final_wkf <span class="ot">&lt;-</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  rf_wkf <span class="sc">|&gt;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">finalize_workflow</span>(rf_tuned_mtry)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>We’re ready to compare our models on the test set!</p>
+</section>
+</section>
+<section id="model-showdown" class="level1">
+<h1>Model Showdown</h1>
+<p>With our tuning parameters optimized, all we have left is to test the models on data they haven’t seen before!</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># final fit for classification tree</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>tree_final_fit <span class="ot">&lt;-</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>  tree_final_wkf <span class="sc">|&gt;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">last_fit</span>(water_split,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">metrics =</span> <span class="fu">metric_set</span>(accuracy, mn_log_loss))</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="co"># final fit for rf model</span></span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>rf_final_fit <span class="ot">&lt;-</span></span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>  rf_final_wkf <span class="sc">|&gt;</span></span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">last_fit</span>(water_split,</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">metrics =</span> <span class="fu">metric_set</span>(accuracy, mn_log_loss))</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-13"><a href="#cb22-13" aria-hidden="true" tabindex="-1"></a>tree_metrics <span class="ot">&lt;-</span> </span>
+<span id="cb22-14"><a href="#cb22-14" aria-hidden="true" tabindex="-1"></a>  tree_final_fit <span class="sc">|&gt;</span></span>
+<span id="cb22-15"><a href="#cb22-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect_metrics</span>()</span>
+<span id="cb22-16"><a href="#cb22-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-17"><a href="#cb22-17" aria-hidden="true" tabindex="-1"></a>rf_metrics <span class="ot">&lt;-</span></span>
+<span id="cb22-18"><a href="#cb22-18" aria-hidden="true" tabindex="-1"></a>  rf_final_fit <span class="sc">|&gt;</span></span>
+<span id="cb22-19"><a href="#cb22-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">collect_metrics</span>()</span>
+<span id="cb22-20"><a href="#cb22-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-21"><a href="#cb22-21" aria-hidden="true" tabindex="-1"></a><span class="co"># table to compare metrics</span></span>
+<span id="cb22-22"><a href="#cb22-22" aria-hidden="true" tabindex="-1"></a><span class="fu">rbind</span>(tree_metrics, rf_metrics) <span class="sc">|&gt;</span></span>
+<span id="cb22-23"><a href="#cb22-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cbind</span>(<span class="at">model =</span>  <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">"Tree"</span>, <span class="st">"Random Forest"</span>), <span class="at">each =</span> <span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb22-24"><a href="#cb22-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(model, .metric, .estimate) <span class="sc">|&gt;</span></span>
+<span id="cb22-25"><a href="#cb22-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">"metric"</span> <span class="ot">=</span> <span class="st">".metric"</span>,</span>
+<span id="cb22-26"><a href="#cb22-26" aria-hidden="true" tabindex="-1"></a>         <span class="st">"estimate"</span> <span class="ot">=</span> <span class="st">".estimate"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          model      metric  estimate
+1          Tree    accuracy 0.6045400
+2          Tree mn_log_loss 0.6711279
+3 Random Forest    accuracy 0.6200717
+4 Random Forest mn_log_loss 0.6404445</code></pre>
+</div>
+</div>
+<p>With a superior log loss and slightly superior accuracy, the <strong>random forest model</strong> did the best job at predicting water potability, correctly classifying 62.01% of water sources!</p>
 
 
 </section>

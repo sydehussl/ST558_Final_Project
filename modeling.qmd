@@ -129,14 +129,19 @@ On the left hand side of image below, the predictor space is divided into three 
 
 Consider a person with a blood pressure less than 152. Starting at first node (the box labeled '1'), this person's blood pressure classifies them in the (2) region, corresponding to the larger region on the left side of the predictor space.
 
+When trees don't have perfectly pure nodes, the most prevalent class in the region is the prediction. For regression tasks, the average of the observations in the region is predicted instead.
+
 ![Classification Tree Example from Choi, Doowon, et. al (2020)](class_tree_example.png)
 
 ## Defining Model + Workflow:
 
 We specify the following details when creating our model:
 
-- Decision tree with a maximum depth of 30, minimum terminal node size of 10, tuneable cost complexity penalty
-- Use the `rpart` engine to build a *classification* tree
+- Build a decision tree with:
+  + Maximum depth of 30
+  + Minimum terminal node size of 10
+  + Tuneable cost complexity penalty
+- Use the `rpart` engine to build a **classification** tree
 
 Regarding our workflow, we simply specify our recipe and the model we just made.
 ```{r}
@@ -156,9 +161,9 @@ tree_wkf <-
 
 ```
 
-## Fitting the Model
+## Fitting the Model + Tuning Cost Complexity
 
-Next, we fit the model to the training folds to optimize the cost-complexity penalty. We will test 25 options to optimize the model performance.
+Next, we fit the model to the training folds to optimize the cost-complexity penalty. We will test 25 values to optimize the model performance.
 
 As instructed, we use **log loss** as the loss metric.
 
@@ -187,7 +192,7 @@ tree_tuned_cp <-
 tree_tuned_cp
 ```
 
-## Finalize Model + Fit Entire Training Set
+## Finalize Classification Tree Model
 
 With our tuning parameter optimized, let's build the final workflow!
 ```{r}
@@ -202,19 +207,108 @@ We'll save the test accuracy for the model showdown.
 Next, we build the random forest model!
 
 # Random Forest Model
+## Introduction
 
+A random forest model is a type of **ensemble method** where many trees are generated and predictions are pooled across the entire ensemble (rather than from a single tree).
 
+Each tree in a random forest is grown with **bootstrapped** data (samples with replacement from the original data). At each *node* (branch), a random subset of predictors is considered, rather than the full set.
 
+Random forest models are less prone to over fitting, as the randomization decreases the correlation of trees in the ensemble. This can also increase their predictive power
 
+Compared to regular classification trees, random forest models tend to perform better on new data at the expense of their higher computational demand (especially during training).
 
+## Defining Model + Workflow
 
+For the random forest model, we specify the following:
 
+- Use the `ranger` engine to build the forest
+- The tree is for **classification**, not regression
+- Tune `mtry`, the number of predictors considered at each split
 
+Again, our workflow is simply our general recipe plus the model specification:
+```{r}
+# define model
+rf_model <-
+  rand_forest(mtry = tune()) |>
+  set_engine("ranger") |>
+  set_mode("classification")
 
+# define workflow
+rf_wkf <-
+  workflow() |>
+  add_recipe(tree_rec) |>
+  add_model(rf_model)
+```
 
+## Fitting the Model + Tuning # of Predictors per Split
 
+Next, we fit the model to the training folds to optimize the `mtry` parameter. This parameter defines the number of predictors considered at each split. It's maximum possible value is the number of predictors in our model (6), and minimum is one. We'll consider every possible value.
 
+Again, we use **log loss** as the loss metric.
 
+```{r}
+# fit rf model to CV folds w/ all levels for mtry
+rf_fits <-
+  rf_wkf |>
+  tune_grid(resamples = water_folds,
+            grid = 6,
+            metrics = metric_set(mn_log_loss))
 
+# collect metrics + arrange by loss
+rf_fits |>
+  collect_metrics() |>
+  arrange(mean) |>
+  select(mtry, mean)
+```
+Checking out our parameter table, we see that our loss metric is minimized when there are `r rf_fits |> collect_metrics() |> arrange(mean) |> head(1) |> select(mtry) |> pull()` predictors considered at each split.
 
+We'll save this value and then build the final model!
+```{r}
+rf_tuned_mtry <-
+  rf_fits |>
+  select_best(metric = "mn_log_loss")
+```
 
+## Finalize Model
+
+```{r}
+# finalize workflow
+rf_final_wkf <-
+  rf_wkf |>
+  finalize_workflow(rf_tuned_mtry)
+```
+
+We're ready to compare our models on the test set!
+
+# Model Showdown
+
+With our tuning parameters optimized, all we have left is to test the models on data they haven't seen before!
+```{r}
+# final fit for classification tree
+tree_final_fit <-
+  tree_final_wkf |>
+  last_fit(water_split,
+           metrics = metric_set(accuracy, mn_log_loss))
+
+# final fit for rf model
+rf_final_fit <-
+  rf_final_wkf |>
+  last_fit(water_split,
+           metrics = metric_set(accuracy, mn_log_loss))
+
+tree_metrics <- 
+  tree_final_fit |>
+  collect_metrics()
+
+rf_metrics <-
+  rf_final_fit |>
+  collect_metrics()
+
+# table to compare metrics
+rbind(tree_metrics, rf_metrics) |>
+  cbind(model =  rep(c("Tree", "Random Forest"), each = 2)) |>
+  select(model, .metric, .estimate) |>
+  rename("metric" = ".metric",
+         "estimate" = ".estimate")
+```
+With a superior log loss and slightly superior accuracy, the **random forest model** did the best job at predicting water potability, correctly classifying `r 100 * (rf_metrics |> filter(.metric == "accuracy") |> pull(.estimate) |> round(4))`% of water sources!

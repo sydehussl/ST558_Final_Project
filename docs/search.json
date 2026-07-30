@@ -53,14 +53,14 @@
     "href": "modeling.html#introduction-1",
     "title": "ST 558 Final Project - Modeling",
     "section": "Introduction",
-    "text": "Introduction\nA classification tree is a type of tree-based model that attempts to predict the class/group of an observation based on other inputs.\nTree-based models work by splitting the predictor space into regions. The predictor values at which the splits occur are determined by a loss function during the training process. Splits are binary (they form two groups) and recursive (keep happening until stop condition is met).\nIn classification, splits are chosen to produce the “purest” possible child nodes. If an observation falls into a region, the model classifies it based on the most common class in that bin.\n\nA visual Representation of Tree-based Models\nOn the left hand side of image below, the predictor space is divided into three regions based on the values of Age and Blood Pressure. The right side of the image shows this representation in tree form.\nConsider a person with a blood pressure less than 152. Starting at first node (the box labeled ‘1’), this person’s blood pressure classifies them in the (2) region, corresponding to the larger region on the left side of the predictor space.\n\n\n\nClassification Tree Example from Choi, Doowon, et. al (2020)"
+    "text": "Introduction\nA classification tree is a type of tree-based model that attempts to predict the class/group of an observation based on other inputs.\nTree-based models work by splitting the predictor space into regions. The predictor values at which the splits occur are determined by a loss function during the training process. Splits are binary (they form two groups) and recursive (keep happening until stop condition is met).\nIn classification, splits are chosen to produce the “purest” possible child nodes. If an observation falls into a region, the model classifies it based on the most common class in that bin.\n\nA visual Representation of Tree-based Models\nOn the left hand side of image below, the predictor space is divided into three regions based on the values of Age and Blood Pressure. The right side of the image shows this representation in tree form.\nConsider a person with a blood pressure less than 152. Starting at first node (the box labeled ‘1’), this person’s blood pressure classifies them in the (2) region, corresponding to the larger region on the left side of the predictor space.\nWhen trees don’t have perfectly pure nodes, the most prevalent class in the region is the prediction. For regression tasks, the average of the observations in the region is predicted instead.\n\n\n\nClassification Tree Example from Choi, Doowon, et. al (2020)"
   },
   {
     "objectID": "modeling.html#defining-model-workflow",
     "href": "modeling.html#defining-model-workflow",
     "title": "ST 558 Final Project - Modeling",
     "section": "Defining Model + Workflow:",
-    "text": "Defining Model + Workflow:\nWe specify the following details when creating our model:\n\nDecision tree with a maximum depth of 30, minimum terminal node size of 10, tuneable cost complexity penalty\nUse the rpart engine to build a classification tree\n\nRegarding our workflow, we simply specify our recipe and the model we just made.\n\n# define model\ntree_model &lt;-\n  decision_tree(tree_depth = 30,\n                min_n = 10,\n                cost_complexity = tune()) |&gt;\n  set_engine(\"rpart\") |&gt;\n  set_mode(\"classification\")\n\n# define workflow\ntree_wkf &lt;-\n  workflow() |&gt;\n  add_recipe(tree_rec) |&gt;\n  add_model(tree_model)"
+    "text": "Defining Model + Workflow:\nWe specify the following details when creating our model:\n\nBuild a decision tree with:\n\nMaximum depth of 30\nMinimum terminal node size of 10\nTuneable cost complexity penalty\n\nUse the rpart engine to build a classification tree\n\nRegarding our workflow, we simply specify our recipe and the model we just made.\n\n# define model\ntree_model &lt;-\n  decision_tree(tree_depth = 30,\n                min_n = 10,\n                cost_complexity = tune()) |&gt;\n  set_engine(\"rpart\") |&gt;\n  set_mode(\"classification\")\n\n# define workflow\ntree_wkf &lt;-\n  workflow() |&gt;\n  add_recipe(tree_rec) |&gt;\n  add_model(tree_model)"
   },
   {
     "objectID": "modeling.html#fitting-the-model",
@@ -75,5 +75,47 @@
     "title": "ST 558 Final Project - Modeling",
     "section": "Finalize Model + Fit Entire Training Set",
     "text": "Finalize Model + Fit Entire Training Set\nWith our tuning parameter optimized, let’s build the final workflow!\n\n# finalize workflow\ntree_final_wkf &lt;-\n  tree_wkf |&gt;\n  finalize_workflow(tree_tuned_cp)\n\nWe’ll save the test accuracy for the model showdown.\nNext, we build the random forest model!"
+  },
+  {
+    "objectID": "modeling.html#fitting-the-model-tuning-cost-complexity",
+    "href": "modeling.html#fitting-the-model-tuning-cost-complexity",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Fitting the Model + Tuning Cost Complexity",
+    "text": "Fitting the Model + Tuning Cost Complexity\nNext, we fit the model to the training folds to optimize the cost-complexity penalty. We will test 25 values to optimize the model performance.\nAs instructed, we use log loss as the loss metric.\n\n# fit model to CV folds w/ 15 levels for Cp\ntree_fits &lt;-\n  tree_wkf |&gt;\n  tune_grid(resamples = water_folds,\n            grid = grid_regular(cost_complexity(),\n                               levels = 25),\n            metrics = metric_set(mn_log_loss))\n\n# collect metrics + arrange by loss\ntree_fits |&gt;\n  collect_metrics() |&gt;\n  arrange(mean) |&gt;\n  select(cost_complexity, mean)\n\n# A tibble: 25 × 2\n   cost_complexity  mean\n             &lt;dbl&gt; &lt;dbl&gt;\n 1        4.22e- 2 0.672\n 2        1   e- 1 0.672\n 3        1.78e- 2 0.673\n 4        7.50e- 3 0.731\n 5        3.16e- 3 2.01 \n 6        1.33e- 3 4.29 \n 7        5.62e- 4 4.81 \n 8        1   e-10 4.92 \n 9        2.37e-10 4.92 \n10        5.62e-10 4.92 \n# ℹ 15 more rows\n\n\nWe can see that there’s a tie for the best cost complexity parameter. We’ll choose the larger penalty, as this will reduce the likelihood our tree over-fits the training data. We can do this using the select_best() function:\n\ntree_tuned_cp &lt;-\n  tree_fits |&gt;\n  select_best(metric = \"mn_log_loss\")\n\ntree_tuned_cp\n\n# A tibble: 1 × 2\n  cost_complexity .config         \n            &lt;dbl&gt; &lt;chr&gt;           \n1          0.0422 pre0_mod24_post0"
+  },
+  {
+    "objectID": "modeling.html#finalize-classification-tree-model",
+    "href": "modeling.html#finalize-classification-tree-model",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Finalize Classification Tree Model",
+    "text": "Finalize Classification Tree Model\nWith our tuning parameter optimized, let’s build the final workflow!\n\n# finalize workflow\ntree_final_wkf &lt;-\n  tree_wkf |&gt;\n  finalize_workflow(tree_tuned_cp)\n\nWe’ll save the test accuracy for the model showdown.\nNext, we build the random forest model!"
+  },
+  {
+    "objectID": "modeling.html#introduction-2",
+    "href": "modeling.html#introduction-2",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Introduction",
+    "text": "Introduction\nA random forest model is a type of ensemble method where many trees are generated and predictions are pooled across the entire ensemble (rather than from a single tree).\nEach tree in a random forest is grown with bootstrapped data (samples with replacement from the original data). At each node (branch), a random subset of predictors is considered, rather than the full set.\nRandom forest models are less prone to over fitting, as the randomization decreases the correlation of trees in the ensemble. This can also increase their predictive power\nCompared to regular classification trees, random forest models tend to perform better on new data at the expense of their higher computational demand (especially during training)."
+  },
+  {
+    "objectID": "modeling.html#defining-model-workflow-1",
+    "href": "modeling.html#defining-model-workflow-1",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Defining Model + Workflow",
+    "text": "Defining Model + Workflow\nFor the random forest model, we specify the following:\n\nUse the ranger engine to build the forest\nThe tree is for classification, not regression\nTune mtry, the number of predictors considered at each split\n\nAgain, our workflow is simply our general recipe plus the model specification:\n\n# define model\nrf_model &lt;-\n  rand_forest(mtry = tune()) |&gt;\n  set_engine(\"ranger\") |&gt;\n  set_mode(\"classification\")\n\n# define workflow\nrf_wkf &lt;-\n  workflow() |&gt;\n  add_recipe(tree_rec) |&gt;\n  add_model(rf_model)"
+  },
+  {
+    "objectID": "modeling.html#fitting-the-model-tuning-of-predictors-per-split",
+    "href": "modeling.html#fitting-the-model-tuning-of-predictors-per-split",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Fitting the Model + Tuning # of Predictors per Split",
+    "text": "Fitting the Model + Tuning # of Predictors per Split\nNext, we fit the model to the training folds to optimize the mtry parameter. This parameter defines the number of predictors considered at each split. It’s maximum possible value is the number of predictors in our model (6), and minimum is one. We’ll consider every possible value.\nAgain, we use log loss as the loss metric.\n\n# fit rf model to CV folds w/ all levels for mtry\nrf_fits &lt;-\n  rf_wkf |&gt;\n  tune_grid(resamples = water_folds,\n            grid = 6,\n            metrics = metric_set(mn_log_loss))\n\ni Creating pre-processing data to finalize 1 unknown parameter: \"mtry\"\n\n# collect metrics + arrange by loss\nrf_fits |&gt;\n  collect_metrics() |&gt;\n  arrange(mean) |&gt;\n  select(mtry, mean)\n\n# A tibble: 6 × 2\n   mtry  mean\n  &lt;int&gt; &lt;dbl&gt;\n1     2 0.659\n2     1 0.661\n3     3 0.662\n4     4 0.663\n5     5 0.663\n6     6 0.666\n\n\nChecking out our parameter table, we see that our loss metric is minimized when there are 2 predictors considered at each split.\nWe’ll save this value and then build the final model!\n\nrf_tuned_mtry &lt;-\n  rf_fits |&gt;\n  select_best(metric = \"mn_log_loss\")"
+  },
+  {
+    "objectID": "modeling.html#finalize-model",
+    "href": "modeling.html#finalize-model",
+    "title": "ST 558 Final Project - Modeling",
+    "section": "Finalize Model",
+    "text": "Finalize Model\n\n# finalize workflow\nrf_final_wkf &lt;-\n  rf_wkf |&gt;\n  finalize_workflow(rf_tuned_mtry)\n\nWe’re ready to compare our models on the test set!"
   }
 ]
