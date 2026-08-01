@@ -312,3 +312,8 @@ rbind(tree_metrics, rf_metrics) |>
          "estimate" = ".estimate")
 ```
 With a superior log loss and slightly superior accuracy, the **random forest model** did the best job at predicting water potability, correctly classifying `r 100 * (rf_metrics |> filter(.metric == "accuracy") |> pull(.estimate) |> round(4))`% of water sources!
+
+We'll save this model so we can import it into the docker container
+```{r}
+saveRDS(rf_mod, "rf_mod.rds")
+```
