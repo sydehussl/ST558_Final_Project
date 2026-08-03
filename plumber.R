@@ -52,7 +52,6 @@ function(solids = mean_parms$solids,
          hardness = mean_parms$hardness,
          ph = mean_parms$ph,
          turbidity = mean_parms$turbidity) {
-  
     parm_df <-
       data.frame(solids = as.numeric(solids),
                  chloramines = as.numeric(chloramines),
@@ -60,7 +59,6 @@ function(solids = mean_parms$solids,
                  hardness = as.numeric(hardness),
                  ph = as.numeric(ph),
                  turbidity = as.numeric(turbidity))
-  
     predict(rf_mod, new_data = parm_df) |>
     pull() |> 
     as.character()
